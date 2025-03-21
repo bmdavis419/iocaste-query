@@ -1,22 +1,29 @@
 <script lang="ts">
-	import {
-		createIocasteQuery,
-		iocasteQueryOptions
-	} from '$lib/iocaste-query/iocasteQuery.svelte.js';
+	import { getIocasteClient } from '$lib/iocaste-query/iocasteClient.svelte.js';
+	import { iocasteQueryOptions } from '$lib/iocaste-query/iocasteQuery.svelte.js';
+
+	const client = getIocasteClient();
 
 	const options = iocasteQueryOptions({
 		queryFn: async () => {
 			const randomNumber = Math.floor(Math.random() * 1000);
+
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
 			if (randomNumber % 2 === 0) {
 				throw new Error('random number is even');
 			}
 
-			return `your random number is ${randomNumber}`;
+			return randomNumber;
 		},
-		queryKey: ['hello']
+		queryKey: ['hello'],
+		config: {
+			refetchOnMount: true,
+			refetchOnWindowFocus: true
+		}
 	});
 
-	const query = createIocasteQuery(options);
+	const query = client.createQuery(options);
 </script>
 
 <div class="flex flex-col gap-4 rounded-md bg-neutral-800 p-4">

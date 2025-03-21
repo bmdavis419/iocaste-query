@@ -1,3 +1,5 @@
+import type { IocasteQueryCacheClass } from './iocasteQueryCache.svelte.js';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type IocasteQueryKey = ReadonlyArray<unknown>;
 
@@ -36,7 +38,6 @@ export type IocasteQueryDef<TOutput, TError, TKey extends IocasteQueryKey> = {
 		error: TError;
 	};
 	key: DecoratedIocasteQueryKey<TKey>;
-	internalRunResolver: IocasteQueryInternalRunResolver<TOutput, TError>;
 	config: IocasteQueryConfig;
 };
 
@@ -52,13 +53,11 @@ export type AnyIocasteQuery = IocasteQuery<any, any, any>;
 export type IocasteQueryConfig = {
 	refetchOnWindowFocus: boolean;
 	refetchOnMount: boolean;
-	refetchOnNavigate: boolean;
 };
 
 export const defaultIocasteQueryConfig: IocasteQueryConfig = {
 	refetchOnWindowFocus: true,
-	refetchOnMount: true,
-	refetchOnNavigate: true
+	refetchOnMount: true
 };
 
 export type IocasteQueryOptions<$Output, $Key extends IocasteQueryKey> = {
@@ -86,16 +85,16 @@ export type IocasteQuery<TOutput, TError, TKey extends IocasteQueryKey> = {
 	_def: IocasteQueryDef<TOutput, TError, TKey>;
 } & IocasteQueryMethods<TOutput, TError>;
 
-export const createIocasteQuery = <
-	TOutput = unknown,
-	TError = Error,
-	TKey extends IocasteQueryKey = IocasteQueryKey
->(
-	options: IocasteQueryOptions<TOutput, TKey>
-) => {
-	const optionsWithErrorTag = iocasteQueryOptions<TOutput, TError, TKey>(options);
+export const internalCreateIocasteQuery = <TOutput, TError, TKey extends IocasteQueryKey>(data: {
+	options: IocasteQueryOptions<TOutput, TKey>;
+	cache: IocasteQueryCacheClass<TOutput, TError>;
+}) => {
+	const optionsWithErrorTag = iocasteQueryOptions<TOutput, TError, TKey>(data.options);
 
-	return new IocasteQueryClass(optionsWithErrorTag);
+	return new IocasteQueryClass({
+		options: optionsWithErrorTag,
+		cache: data.cache
+	});
 };
 
 export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
@@ -103,64 +102,44 @@ export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
 {
 	_def: IocasteQueryDef<TOutput, TError, TKey>;
 
-	data = $state<TOutput | undefined>();
-	isLoading = $state(false);
-	error = $state<TError | undefined>();
+	get data() {
+		return this.cache.data;
+	}
 
-	constructor(
+	get isLoading() {
+		return this.cache.isLoading;
+	}
+
+	get error() {
+		return this.cache.error;
+	}
+
+	private cache: IocasteQueryCacheClass<TOutput, TError>;
+
+	constructor(data: {
 		options: IocasteQueryOptions<TOutput, TKey> & {
 			errorTag: ErrorTag<TError>;
-		}
-	) {
+		};
+		cache: IocasteQueryCacheClass<TOutput, TError>;
+	}) {
 		this._def = {
-			resolver: options.queryFn,
+			resolver: data.options.queryFn,
 			$types: {
 				output: null as unknown as TOutput,
 				key: null as unknown as DecoratedIocasteQueryKey<TKey>,
 				error: null as unknown as TError
 			},
-			key: options.queryKey as DecoratedIocasteQueryKey<TKey>,
+			key: data.options.queryKey as DecoratedIocasteQueryKey<TKey>,
 			config: {
 				...defaultIocasteQueryConfig,
-				...options.config
-			},
-			internalRunResolver: async () => {
-				try {
-					const result = await this._def.resolver();
-
-					return {
-						data: result,
-						error: undefined
-					};
-				} catch (error) {
-					return {
-						data: undefined,
-						error: error as TError
-					};
-				}
+				...data.options.config
 			}
 		};
 
-		$effect(() => {
-			if (this._def.config.refetchOnMount) {
-				this.internalRun();
-			}
-		});
-	}
-
-	async internalRun() {
-		this.isLoading = true;
-
-		const result = await this._def.internalRunResolver();
-
-		this.data = result.data;
-		this.error = result.error;
-		this.isLoading = false;
+		this.cache = data.cache;
 	}
 
 	async refetch() {
-		await this.internalRun();
+		await this.cache.refetch();
 	}
 }
-
-// todo: create the internalIocasteQuery function

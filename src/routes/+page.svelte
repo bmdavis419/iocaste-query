@@ -1,4 +1,5 @@
 <script lang="ts">
+	import TestMutation from './TestMutation.svelte';
 	import TestQuery from './TestQuery.svelte';
 </script>
 
@@ -8,5 +9,9 @@
 	<div class="flex items-center gap-4">
 		<TestQuery />
 		<TestQuery />
+	</div>
+
+	<div class="flex items-center gap-4">
+		<TestMutation />
 	</div>
 </div>
