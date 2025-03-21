@@ -12,8 +12,6 @@ type errorTagSymbol = typeof errorTagSymbol;
 type AnyErrorTag = {
 	[errorTagSymbol]: any;
 };
-// declare const unsetMarker: unique symbol;
-// type UnsetMarker = typeof unsetMarker;
 type ErrorTag<TError = unknown> = TError extends AnyErrorTag
 	? TError
 	: {

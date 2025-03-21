@@ -18,6 +18,15 @@ class IocasteClient {
 
 	constructor() {}
 
+	async invalidateQueries(data: { queryKey: IocasteQueryKey }) {
+		const queryKeyStr = data.queryKey.toString();
+		const curCacheItem = this.queryCache.get(queryKeyStr);
+
+		if (curCacheItem) {
+			await curCacheItem.refetch();
+		}
+	}
+
 	createMutation<$Input = unknown, $Output = unknown, $Error = Error>(
 		options: IocasteMutationOptions<$Input, $Output, $Error>
 	) {

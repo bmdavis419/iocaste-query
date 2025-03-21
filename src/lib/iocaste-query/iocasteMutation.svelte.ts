@@ -83,14 +83,14 @@ export class IocasteMutationClass<$Input, $Output, $Error>
 
 		if (data) {
 			this._def.options.onSuccess?.(data);
-			this.data = data;
 		}
 
 		if (error) {
 			this._def.options.onError?.(error);
-			this.error = error;
 		}
 
+		this.data = data;
+		this.error = error;
 		this.isLoading = false;
 	}
 }
