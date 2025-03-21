@@ -1,0 +1,9 @@
+{
+	"workbench.colorCustomizations": {
+		"titleBar.activeBackground": "#005A82",
+		"titleBar.inactiveBackground": "#005A8250",
+		"titleBar.activeForeground": "#FFFFFF",
+		"titleBar.inactiveForeground": "#FFFFFF99"
+	},
+	"cSpell.words": ["Iocaste"]
+}
