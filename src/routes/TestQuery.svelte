@@ -6,6 +6,7 @@
 
 	const options = iocasteQueryOptions({
 		queryFn: async () => {
+			console.log('running query function');
 			const randomNumber = Math.floor(Math.random() * 1000);
 
 			await new Promise((resolve) => setTimeout(resolve, 500));

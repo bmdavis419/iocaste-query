@@ -6,6 +6,7 @@
 
 	const mutationOptions = iocasteMutationOptions({
 		mutationFn: async (data: { name: string }) => {
+			console.log('running mutation function');
 			const randomNumber = Math.floor(Math.random() * 1000);
 			await new Promise((resolve) => setTimeout(resolve, 500));
 
