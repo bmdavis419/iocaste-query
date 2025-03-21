@@ -1,6 +1,8 @@
 {
 	"name": "iocaste-query",
 	"version": "0.0.1",
+	"description": "A react query inspired query client for Svelte",
+	"author": "bmdavis419",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
