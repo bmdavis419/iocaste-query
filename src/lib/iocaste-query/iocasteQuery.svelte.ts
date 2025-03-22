@@ -18,10 +18,16 @@ type ErrorTag<TError = unknown> = TError extends AnyErrorTag
 			[errorTagSymbol]: TError;
 		};
 
-// TODO: add in input, this will be useful data about the query
-export type IocasteQueryResolver<TOutput> = () => Promise<TOutput>;
+export type IocasteQueryInput = {
+	signal: AbortSignal;
+};
 
-export type IocasteQueryInternalRunResolver<TOutput, TError> = () => Promise<{
+// TODO: add in input, this will be useful data about the query
+export type IocasteQueryResolver<TOutput> = (input: IocasteQueryInput) => Promise<TOutput>;
+
+export type IocasteQueryInternalRunResolver<TOutput, TError> = (
+	input: IocasteQueryInput
+) => Promise<{
 	data: TOutput | undefined;
 	error: TError | undefined;
 }>;

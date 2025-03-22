@@ -11,6 +11,8 @@ export class IocasteQueryCacheClass<TOutput, TError> implements IocasteQueryCach
 	data = $state<TOutput | undefined>();
 	error = $state<TError | undefined>();
 
+	private runAbortController: AbortController | undefined;
+
 	private internalRunResolver: IocasteQueryInternalRunResolver<TOutput, TError>;
 
 	private config: IocasteQueryConfig;
@@ -18,11 +20,35 @@ export class IocasteQueryCacheClass<TOutput, TError> implements IocasteQueryCach
 	private async internalRun() {
 		this.isLoading = true;
 
-		const result = await this.internalRunResolver();
+		if (this.runAbortController) {
+			this.runAbortController.abort();
+			this.runAbortController = undefined;
+		}
 
-		this.data = result.data;
-		this.error = result.error;
-		this.isLoading = false;
+		this.runAbortController = new AbortController();
+		const signal = this.runAbortController.signal;
+
+		const promise = this.internalRunResolver({ signal })
+			.then((result) => {
+				if (!signal.aborted) {
+					this.data = result.data;
+					this.error = result.error;
+					this.isLoading = false;
+				}
+			})
+			.catch((error) => {
+				if (!signal.aborted) {
+					console.error('Unexpected error:', error);
+					this.isLoading = false;
+				}
+			})
+			.finally(() => {
+				if (!signal.aborted) {
+					this.isLoading = false;
+				}
+			});
+
+		return promise;
 	}
 
 	private async handleWindowFocus() {

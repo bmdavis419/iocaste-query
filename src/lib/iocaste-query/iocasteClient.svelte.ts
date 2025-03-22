@@ -3,6 +3,7 @@ import {
 	defaultIocasteQueryConfig,
 	internalCreateIocasteQuery,
 	type AnyIocasteQuery,
+	type IocasteQueryInput,
 	type IocasteQueryKey,
 	type IocasteQueryOptions
 } from './iocasteQuery.svelte.js';
@@ -48,9 +49,9 @@ class IocasteClient {
 			this.queries.push(query);
 			return query;
 		} else {
-			const internalRunResolver = async () => {
+			const internalRunResolver = async (data: IocasteQueryInput) => {
 				try {
-					const result = await options.queryFn();
+					const result = await options.queryFn(data);
 					return {
 						data: result,
 						error: undefined
