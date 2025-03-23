@@ -4,9 +4,11 @@
 
 	const client = getIocasteClient();
 
+	let count = $state(0);
+
 	const options = iocasteQueryOptions({
 		queryFn: async () => {
-			console.log('running query function');
+			console.log('running query function', count);
 			const randomNumber = Math.floor(Math.random() * 1000);
 
 			await new Promise((resolve) => setTimeout(resolve, 500));
@@ -17,9 +19,9 @@
 
 			return randomNumber;
 		},
-		queryKey: ['hello'],
+		queryKey: ['hello', () => count],
 		config: {
-			refetchOnMount: true,
+			enabled: true,
 			refetchOnWindowFocus: true
 		}
 	});
@@ -47,11 +49,22 @@
 				<p class="text-sm">isLoading: {query.isLoading}</p>
 			</li>
 			<li>
+				<p class="text-sm">count: {count}</p>
+			</li>
+			<li>
 				<button
 					onclick={() => query.refetch()}
 					class="rounded-md bg-blue-500 px-2 py-1 text-sm font-light text-white hover:cursor-pointer hover:bg-blue-600"
 				>
 					refetch
+				</button>
+			</li>
+			<li>
+				<button
+					onclick={() => count++}
+					class="rounded-md bg-blue-500 px-2 py-1 text-sm font-light text-white hover:cursor-pointer hover:bg-blue-600"
+				>
+					increment
 				</button>
 			</li>
 		</ul>

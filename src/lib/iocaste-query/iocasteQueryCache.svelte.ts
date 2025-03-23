@@ -67,7 +67,7 @@ export class IocasteQueryCacheClass<TOutput, TError> implements IocasteQueryCach
 		this.config = data.config;
 
 		$effect(() => {
-			if (this.config.refetchOnMount) {
+			if (this.config.enabled) {
 				this.internalRun();
 			}
 		});

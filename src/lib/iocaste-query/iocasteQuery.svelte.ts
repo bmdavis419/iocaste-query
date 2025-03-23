@@ -1,7 +1,7 @@
 import type { IocasteQueryCacheClass } from './iocasteQueryCache.svelte.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export type IocasteQueryKey = ReadonlyArray<unknown>;
+export type IocasteQueryKey = ReadonlyArray<unknown | (() => unknown)>;
 
 export type DecoratedIocasteQueryKey<TKey extends IocasteQueryKey> = {
 	[K in keyof TKey]: TKey[K] extends TKey[number] ? TKey[K] : never;
@@ -56,12 +56,12 @@ export type AnyIocasteQuery = IocasteQuery<any, any, any>;
 
 export type IocasteQueryConfig = {
 	refetchOnWindowFocus: boolean;
-	refetchOnMount: boolean;
+	enabled: boolean;
 };
 
 export const defaultIocasteQueryConfig: IocasteQueryConfig = {
 	refetchOnWindowFocus: true,
-	refetchOnMount: true
+	enabled: true
 };
 
 export type IocasteQueryOptions<$Output, $Key extends IocasteQueryKey> = {
