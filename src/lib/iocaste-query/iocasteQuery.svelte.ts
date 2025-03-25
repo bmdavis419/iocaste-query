@@ -1,4 +1,9 @@
-import type { IocasteQueryCacheClass } from './iocasteQueryCache.svelte.js';
+import type { Unsubscriber } from 'svelte/store';
+import {
+	createQueryKeyHash,
+	internalGetCacheContext,
+	NewIocasteQueryCache
+} from './iocasteQueryCache.svelte.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type IocasteQueryKey = ReadonlyArray<unknown | (() => unknown)>;
@@ -91,13 +96,11 @@ export type IocasteQuery<TOutput, TError, TKey extends IocasteQueryKey> = {
 
 export const internalCreateIocasteQuery = <TOutput, TError, TKey extends IocasteQueryKey>(data: {
 	options: IocasteQueryOptions<TOutput, TKey>;
-	cache: IocasteQueryCacheClass<TOutput, TError>;
 }) => {
 	const optionsWithErrorTag = iocasteQueryOptions<TOutput, TError, TKey>(data.options);
 
 	return new IocasteQueryClass({
-		options: optionsWithErrorTag,
-		cache: data.cache
+		options: optionsWithErrorTag
 	});
 };
 
@@ -106,25 +109,77 @@ export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
 {
 	_def: IocasteQueryDef<TOutput, TError, TKey>;
 
-	get data() {
-		return this.cache.data;
+	data = $state<TOutput | undefined>();
+	isLoading = $state(false);
+	error = $state<TError | undefined>();
+
+	private cache: NewIocasteQueryCache<TOutput, TError>;
+
+	private hasMounted = false;
+
+	private unsubscribers: Unsubscriber[] = [];
+
+	private subscribeToCache(cache: NewIocasteQueryCache<TOutput, TError>) {
+		for (const unsubscribe of this.unsubscribers) {
+			unsubscribe();
+		}
+
+		this.unsubscribers = [];
+
+		this.unsubscribers.push(
+			cache.data.subscribe((value) => {
+				this.data = value;
+			}),
+			cache.isLoading.subscribe((value) => {
+				this.isLoading = value;
+			}),
+			cache.error.subscribe((value) => {
+				this.error = value;
+			})
+		);
 	}
 
-	get isLoading() {
-		return this.cache.isLoading;
-	}
+	private getCache(key: IocasteQueryKey) {
+		const cacheMap = internalGetCacheContext();
 
-	get error() {
-		return this.cache.error;
-	}
+		const keyHash = createQueryKeyHash(key);
 
-	private cache: IocasteQueryCacheClass<TOutput, TError>;
+		const curCacheItem = cacheMap.get(keyHash) as NewIocasteQueryCache<TOutput, TError> | undefined;
+
+		if (curCacheItem) {
+			return {
+				cache: curCacheItem,
+				hit: true
+			};
+		} else {
+			const internalRunResolver = async (data: IocasteQueryInput) => {
+				try {
+					const result = await this._def.resolver(data);
+					return {
+						data: result,
+						error: undefined
+					};
+				} catch (error) {
+					return {
+						data: undefined,
+						error: error as TError
+					};
+				}
+			};
+			const newCache = new NewIocasteQueryCache({ internalRunResolver });
+			cacheMap.set(keyHash, newCache);
+
+			return {
+				cache: newCache,
+				hit: false
+			};
+		}
+	}
 
 	constructor(data: {
 		options: IocasteQueryOptions<TOutput, TKey> & {
 			errorTag: ErrorTag<TError>;
 		};
-		cache: IocasteQueryCacheClass<TOutput, TError>;
 	}) {
 		this._def = {
 			resolver: data.options.queryFn,
@@ -140,7 +195,38 @@ export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
 			}
 		};
 
-		this.cache = data.cache;
+		const cacheResult = this.getCache(data.options.queryKey);
+
+		this.cache = cacheResult.cache;
+
+		this.subscribeToCache(cacheResult.cache);
+
+		$effect(() => {
+			console.log('key effect');
+			for (const key of this._def.key) {
+				if (typeof key === 'function') {
+					key();
+				}
+			}
+
+			if (this.hasMounted) {
+				const cacheResult = this.getCache(data.options.queryKey);
+
+				this.cache = cacheResult.cache;
+
+				this.subscribeToCache(cacheResult.cache);
+
+				this.cache.refetch();
+			} else {
+				this.hasMounted = true;
+			}
+		});
+
+		$effect(() => {
+			if (this._def.config.enabled) {
+				this.cache.refetchMount();
+			}
+		});
 	}
 
 	async refetch() {

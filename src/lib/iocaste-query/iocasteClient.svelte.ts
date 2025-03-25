@@ -1,13 +1,12 @@
 import { getContext, setContext } from 'svelte';
 import {
-	defaultIocasteQueryConfig,
-	internalCreateIocasteQuery,
+	IocasteQueryClass,
+	iocasteQueryOptions,
 	type AnyIocasteQuery,
-	type IocasteQueryInput,
 	type IocasteQueryKey,
 	type IocasteQueryOptions
 } from './iocasteQuery.svelte.js';
-import { IocasteQueryCacheClass } from './iocasteQueryCache.svelte.js';
+import { createQueryKeyHash, internalSetCacheContext } from './iocasteQueryCache.svelte.js';
 import {
 	internalCreateIocasteMutation,
 	type IocasteMutationOptions
@@ -15,13 +14,14 @@ import {
 
 class IocasteClient {
 	private queries: AnyIocasteQuery[] = [];
-	private queryCache: Map<string, IocasteQueryCacheClass<unknown, unknown>> = new Map();
 
 	constructor() {}
 
 	async invalidateQueries(data: { queryKey: IocasteQueryKey }) {
-		const queryKeyStr = data.queryKey.toString();
-		const curCacheItem = this.queryCache.get(queryKeyStr);
+		const queryKeyStr = createQueryKeyHash(data.queryKey);
+		const curCacheItem = this.queries.find(
+			(query) => createQueryKeyHash(query._def.key) === queryKeyStr
+		);
 
 		if (curCacheItem) {
 			await curCacheItem.refetch();
@@ -37,51 +37,15 @@ class IocasteClient {
 	createQuery<$Output = unknown, $Error = Error, $Key extends IocasteQueryKey = IocasteQueryKey>(
 		options: IocasteQueryOptions<$Output, $Key>
 	) {
-		const queryKeyStr = options.queryKey.toString();
-		const curCacheItem = this.queryCache.get(queryKeyStr);
+		const optionsWithErrorTag = iocasteQueryOptions<$Output, $Error, $Key>(options);
 
-		if (curCacheItem) {
-			const query = internalCreateIocasteQuery({
-				options,
-				cache: curCacheItem as IocasteQueryCacheClass<$Output, $Error>
-			});
+		const query = new IocasteQueryClass({
+			options: optionsWithErrorTag
+		});
 
-			this.queries.push(query);
-			return query;
-		} else {
-			const internalRunResolver = async (data: IocasteQueryInput) => {
-				try {
-					const result = await options.queryFn(data);
-					return {
-						data: result,
-						error: undefined
-					};
-				} catch (error) {
-					return {
-						data: undefined,
-						error: error as $Error
-					};
-				}
-			};
+		this.queries.push(query);
 
-			const cache = new IocasteQueryCacheClass({
-				internalRunResolver,
-				config: {
-					...defaultIocasteQueryConfig,
-					...options.config
-				}
-			});
-
-			this.queryCache.set(queryKeyStr, cache);
-
-			const query = internalCreateIocasteQuery({
-				options,
-				cache
-			});
-
-			this.queries.push(query);
-			return query;
-		}
+		return query;
 	}
 }
 
@@ -89,6 +53,7 @@ const DEFAULT_KEY = '$_iocaste_client';
 
 export const createIocasteClient = (key: string = DEFAULT_KEY) => {
 	const client = new IocasteClient();
+	internalSetCacheContext();
 	return setContext(key, client);
 };
 
