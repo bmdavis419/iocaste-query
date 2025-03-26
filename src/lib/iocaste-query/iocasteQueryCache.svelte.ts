@@ -4,7 +4,6 @@ import type {
 	IocasteQueryInternalRunResolver,
 	IocasteQueryKey
 } from './iocasteQuery.svelte.js';
-import { SvelteMap } from 'svelte/reactivity';
 import { writable, type Writable } from 'svelte/store';
 
 interface IocasteQueryCache<TOutput, TError> {
@@ -28,6 +27,10 @@ export class NewIocasteQueryCache<TOutput, TError> implements IocasteQueryCache<
 	isLoading = writable(false);
 	data = writable<TOutput | undefined>();
 	error = writable<TError | undefined>();
+
+	cacheId = crypto.randomUUID();
+
+	private isPending = false;
 
 	private runAbortController: AbortController | undefined;
 
@@ -71,12 +74,11 @@ export class NewIocasteQueryCache<TOutput, TError> implements IocasteQueryCache<
 		this.internalRunResolver = data.internalRunResolver;
 	}
 
-	private hasMounted = false;
-
-	async refetchMount() {
-		if (!this.hasMounted) {
-			this.hasMounted = true;
+	async refetchLock() {
+		if (!this.isPending) {
+			this.isPending = true;
 			await this.internalRun();
+			this.isPending = false;
 		}
 	}
 
@@ -88,13 +90,13 @@ export class NewIocasteQueryCache<TOutput, TError> implements IocasteQueryCache<
 const CACHE_KEY = '$_iocaste_query_cache';
 
 export const internalSetCacheContext = () => {
-	const cacheMap = new SvelteMap<string, NewIocasteQueryCache<unknown, unknown>>();
+	const cacheMap = new Map<string, NewIocasteQueryCache<unknown, unknown>>();
 
 	return setContext(CACHE_KEY, cacheMap);
 };
 
 export const internalGetCacheContext = () => {
-	return getContext<SvelteMap<string, NewIocasteQueryCache<unknown, unknown>>>(CACHE_KEY);
+	return getContext<Map<string, NewIocasteQueryCache<unknown, unknown>>>(CACHE_KEY);
 };
 
 // change this to instead of holding all the implementation details, just hold the state

@@ -1,4 +1,4 @@
-import type { Unsubscriber } from 'svelte/store';
+import { type Unsubscriber } from 'svelte/store';
 import {
 	createQueryKeyHash,
 	internalGetCacheContext,
@@ -112,10 +112,9 @@ export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
 	data = $state<TOutput | undefined>();
 	isLoading = $state(false);
 	error = $state<TError | undefined>();
+	cacheId = $state<string | undefined>();
 
 	private cache: NewIocasteQueryCache<TOutput, TError>;
-
-	private hasMounted = false;
 
 	private unsubscribers: Unsubscriber[] = [];
 
@@ -143,6 +142,10 @@ export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
 		const cacheMap = internalGetCacheContext();
 
 		const keyHash = createQueryKeyHash(key);
+
+		console.log(cacheMap);
+
+		console.log('key is changing', keyHash);
 
 		const curCacheItem = cacheMap.get(keyHash) as NewIocasteQueryCache<TOutput, TError> | undefined;
 
@@ -209,24 +212,23 @@ export class IocasteQueryClass<TOutput, TError, TKey extends IocasteQueryKey>
 				}
 			}
 
-			if (this.hasMounted) {
-				const cacheResult = this.getCache(data.options.queryKey);
+			const cacheResult = this.getCache(data.options.queryKey);
 
-				this.cache = cacheResult.cache;
+			this.cache = cacheResult.cache;
 
-				this.subscribeToCache(cacheResult.cache);
+			this.subscribeToCache(cacheResult.cache);
 
-				this.cache.refetch();
-			} else {
-				this.hasMounted = true;
-			}
+			this.cacheId = cacheResult.cache.cacheId;
+
+			this.cache.refetchLock();
 		});
 
-		$effect(() => {
-			if (this._def.config.enabled) {
-				this.cache.refetchMount();
-			}
-		});
+		// $effect(() => {
+		// 	console.log('config effect');
+		// 	if (this._def.config.enabled) {
+		// 		this.cache.refetchMount();
+		// 	}
+		// });
 	}
 
 	async refetch() {

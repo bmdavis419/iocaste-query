@@ -49,6 +49,9 @@
 				<p class="text-sm">isLoading: {query.isLoading}</p>
 			</li>
 			<li>
+				<p class="text-sm">cacheId: {query.cacheId}</p>
+			</li>
+			<li>
 				<p class="text-sm">count: {count}</p>
 			</li>
 			<li>
