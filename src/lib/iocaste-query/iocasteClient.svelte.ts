@@ -1,12 +1,14 @@
 import { getContext, setContext } from 'svelte';
 import {
+	defaultIocasteQueryConfig,
 	IocasteQueryClass,
 	iocasteQueryOptions,
 	type AnyIocasteQuery,
+	type IocasteQueryInput,
 	type IocasteQueryKey,
 	type IocasteQueryOptions
 } from './iocasteQuery.svelte.js';
-import { createQueryKeyHash, internalSetCacheContext } from './iocasteQueryCache.svelte.js';
+import { createQueryKeyHash, IocasteQueryCache } from './iocasteQueryCache.svelte.js';
 import {
 	internalCreateIocasteMutation,
 	type IocasteMutationOptions
@@ -14,6 +16,7 @@ import {
 
 class IocasteClient {
 	private queries: AnyIocasteQuery[] = [];
+	private caches: Map<string, IocasteQueryCache<unknown, unknown>> = new Map();
 
 	constructor() {}
 
@@ -39,13 +42,52 @@ class IocasteClient {
 	) {
 		const optionsWithErrorTag = iocasteQueryOptions<$Output, $Error, $Key>(options);
 
-		const query = new IocasteQueryClass({
-			options: optionsWithErrorTag
-		});
+		const internalRunResolver = async (options: IocasteQueryInput) => {
+			try {
+				const result = await optionsWithErrorTag.queryFn(options);
+				return {
+					data: result,
+					error: undefined
+				};
+			} catch (error) {
+				return {
+					data: undefined,
+					error: error as $Error
+				};
+			}
+		};
 
-		this.queries.push(query);
+		const curCache = this.caches.get(createQueryKeyHash(optionsWithErrorTag.queryKey));
 
-		return query;
+		if (!curCache) {
+			const newCache = new IocasteQueryCache({
+				internalRunResolver,
+				config: {
+					...defaultIocasteQueryConfig,
+					...optionsWithErrorTag.config
+				}
+			});
+
+			this.caches.set(createQueryKeyHash(optionsWithErrorTag.queryKey), newCache);
+
+			const query = new IocasteQueryClass({
+				options: optionsWithErrorTag,
+				cache: newCache
+			});
+
+			this.queries.push(query);
+
+			return query;
+		} else {
+			const query = new IocasteQueryClass({
+				options: optionsWithErrorTag,
+				cache: curCache
+			});
+
+			this.queries.push(query);
+
+			return query;
+		}
 	}
 }
 
@@ -53,7 +95,6 @@ const DEFAULT_KEY = '$_iocaste_client';
 
 export const createIocasteClient = (key: string = DEFAULT_KEY) => {
 	const client = new IocasteClient();
-	internalSetCacheContext();
 	return setContext(key, client);
 };
 

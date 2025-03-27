@@ -19,7 +19,7 @@
 
 			return randomNumber;
 		},
-		queryKey: ['hello', () => count],
+		queryKey: ['hello'],
 		config: {
 			enabled: true,
 			refetchOnWindowFocus: true
@@ -47,9 +47,6 @@
 			</li>
 			<li>
 				<p class="text-sm">isLoading: {query.isLoading}</p>
-			</li>
-			<li>
-				<p class="text-sm">cacheId: {query.cacheId}</p>
 			</li>
 			<li>
 				<p class="text-sm">count: {count}</p>
